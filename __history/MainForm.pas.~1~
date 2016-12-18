@@ -1,0 +1,343 @@
+unit MainForm;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, ComCtrls, BoldTreeView, Menus, ModelDM, StdCtrls, BoldListBox,
+  ExtCtrls, ToolWin, About, Grids, BoldGrid, BoldMemo, Buttons, BoldImage,
+  ImageLists, BoldCheckBox, BoldEdit, BoldComboBox, TabNotBk, DBCGrids, DBCtrls,
+  DBGrids, Mask, HandlesDM, AllMagEnumFormUnit, PopUpCompUnit,
+  BoldOtherHandlCompUnit, BoldSubscription, BoldElements, BoldControlPack,
+  BoldViewerControlPack, BoldNavigatorDefs, BoldNavigator, OleCtnrs,
+  ShellAPI, BoldStringControlPack, BoldNumericControlPack,
+  BoldPropertiesController, sStatusBar, sToolBar;
+
+type
+  TFirstForm = class(TForm)
+    MainMenu1: TMainMenu;
+    N1: TMenuItem;
+    QuitMenu: TMenuItem;
+    N3: TMenuItem;
+    N4: TMenuItem;
+    N5: TMenuItem;
+    N6: TMenuItem;
+    N7: TMenuItem;
+    BoldActivateSystemActionMenu: TMenuItem;
+    Bevel1: TBevel;
+    EnumsMenu: TMenuItem;
+    N11: TMenuItem;
+    AdminPanelMenu: TMenuItem;
+    N13: TMenuItem;
+    BaseCorrectRepMenu: TMenuItem;
+    basrAnnonceColor: TBoldAsStringRenderer;
+    ToolBar1: TToolBar;
+    basrSectColor: TBoldAsStringRenderer;
+    ProtectTimer: TTimer;
+    N2: TMenuItem;
+    N8: TMenuItem;
+    N9: TMenuItem;
+    N10: TMenuItem;
+    BoldAsStringRenderer1: TBoldAsStringRenderer;
+    BoldAsStringRenderer2: TBoldAsStringRenderer;
+    N15: TMenuItem;
+    DBUpdateTimer: TTimer;
+    basrDrList: TBoldAsStringRenderer;
+    BoldPropertiesController1: TBoldPropertiesController;
+    N14: TMenuItem;
+    N16: TMenuItem;
+    N20: TMenuItem;
+    N21: TMenuItem;
+    N22: TMenuItem;
+    N23: TMenuItem;
+    N12: TMenuItem;
+    N17: TMenuItem;
+    Action1: TMenuItem;
+    StatusBar: TsStatusBar;
+    sToolBar1: TsToolBar;
+    ActivateToolButton: TToolButton;
+    ToolButton4: TToolButton;
+    SettingsToolButton: TToolButton;
+    ToolButton8: TToolButton;
+    ToolButton9: TToolButton;
+    ToolButton10: TToolButton;
+    AdminPanelToolButton: TToolButton;
+    ToolButton12: TToolButton;
+    sToolBar2: TsToolBar;
+    BaseWorkPanelToolButton: TToolButton;
+    ToolButton3: TToolButton;
+    ToolButton13: TToolButton;
+    ToolButton14: TToolButton;
+    ToolButton15: TToolButton;
+    sToolBar3: TsToolBar;
+    ToolButton16: TToolButton;
+    LogPanelToolButton: TToolButton;
+    ToolButton18: TToolButton;
+    ToolButton19: TToolButton;
+    ToolButton20: TToolButton;
+    QuitToolButton: TToolButton;
+    ToolButton22: TToolButton;
+    ToolButton2: TToolButton;
+    ToolButton5: TToolButton;
+    ToolButton6: TToolButton;
+    XML1: TMenuItem;
+    ToolButton1: TToolButton;
+    ToolButton7: TToolButton;
+    procedure XML1Click(Sender: TObject);
+    procedure QuitToolButtonClick(Sender: TObject);
+    procedure LogPanelToolButtonClick(Sender: TObject);
+    procedure ToolButton16Click(Sender: TObject);
+    procedure BaseWorkPanelToolButtonClick(Sender: TObject);
+    procedure AdminPanelToolButtonClick(Sender: TObject);
+    procedure ToolButton9Click(Sender: TObject);
+    procedure SettingsToolButtonClick(Sender: TObject);
+    procedure ActivateToolButtonClick(Sender: TObject);
+    procedure Action1Click(Sender: TObject);
+    procedure ProgrammSettingsToolButtonClick(Sender: TObject);
+    procedure DBDataRefreshToolButtonClick(Sender: TObject);
+    procedure N8Click(Sender: TObject);
+    procedure N2Click(Sender: TObject);
+    function BoldAsIntegerRenderer1GetAsInteger(Element: TBoldElement; Representation: Integer; Expression: string): Integer;
+    procedure N7Click(Sender: TObject);
+    procedure AdminPanelMenuClick(Sender: TObject);
+    procedure FormDblClick(Sender: TObject);
+    procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure FormCreate(Sender: TObject);
+    procedure QuitMenuClick(Sender: TObject);
+    procedure N13Click(Sender: TObject);
+    procedure N6Click(Sender: TObject);
+    procedure CheckUnionObjects;
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+    EnableUpdates: Boolean;
+  end;
+
+var
+  FirstForm: TFirstForm;
+  Mouse: TMouse;
+  CDP: string;
+
+implementation
+
+{$R *.dfm}
+
+uses BusinessClasses, ReportDMUnit, OneDriversOnDaysRepSettUnit, MainRepSetFormUnit, DateUtils, Clipbrd,
+ AdministrationPanelUnit, LogViewFormUnit, BoldAttributes, ReleaseStructUnit;
+
+procedure TFirstForm.N6Click(Sender: TObject);
+begin
+   AboutBox.Show;
+end;
+
+procedure TFirstForm.N13Click(Sender: TObject);
+begin
+  AllMagEnumForm.ShowModal;
+end;
+
+procedure TFirstForm.QuitMenuClick(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TFirstForm.FormCreate(Sender: TObject);
+begin
+  Mouse:=TMouse.Create;
+  CDP:=GetCurrentDir;
+end;
+
+procedure TFirstForm.FormClose(Sender: TObject; var Action: TCloseAction);
+var SaveChanges: OleVariant;
+    DocItem: OleVariant;
+begin
+  SaveChanges:=False;
+  DocItem:=1;
+  ClipBoard.Clear;
+end;
+
+procedure TFirstForm.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+begin
+  if BoldModelDM.bsh.Active then
+    begin
+      ShowMessage('Подключение к базе активно, приложение деактивирует его!');
+      FirstForm.ActivateToolButtonClick(ActivateToolButton);
+    end;
+end;
+
+procedure TFirstForm.FormDblClick(Sender: TObject);
+begin
+if (BoldHandlesDM.blhUsersList.List.Count=0) or
+   (IniFile.ReadString('BUSINESS_DATA','enable_for_allXML_DEMO','NO')='YES') then
+  AdminPanelForm.Show;
+end;
+
+procedure TFirstForm.AdminPanelMenuClick(Sender: TObject);
+begin
+  AdminPanelForm.ShowModal;
+end;
+
+procedure TFirstForm.N7Click(Sender: TObject);
+begin
+  ShellExecute(Application.Handle, 'Open', PChar('MagazineRedactor.udl'), nil, PChar(CDP), SW_SHOWNORMAL);
+end;
+
+procedure TFirstForm.CheckUnionObjects;
+var TBE: TNastroiki;
+    ctbe: TTip_kontakta;
+begin
+  if BoldHandlesDM.behSettElm.Value<>nil then
+    begin
+    end
+  else
+    begin
+     TBE:=TNastroiki.Create(nil,True);
+     TBE.Dlina_intervala:=7;
+     TBE.Nomer_start_vyp:=20;
+     TBE.God_start_vyp:=2006;
+     BoldModelDM.BoldUpdateDBAction1.Execute;
+    end;
+
+  if BoldHandlesDM.behStartContactType.Value=nil then
+    begin
+      ctbe:=
+        TTip_kontakta.Create(nil,True);
+      ctbe.Eng_description:=
+        'add_account';
+    end;
+  if BoldHandlesDM.behNewDevelop.Value=nil then
+    begin
+      ctbe:=
+        TTip_kontakta.Create(nil,True);
+      ctbe.Eng_description:=
+        'new_develop';
+    end;
+  if BoldHandlesDM.behProjApply.Value=nil then
+    begin
+      ctbe:=
+        TTip_kontakta.Create(nil,True);
+      ctbe.Eng_description:=
+        'proj_apply';
+    end;
+
+   if BoldHandlesDM.behProjStart.Value=nil then
+    begin
+      ctbe:=
+        TTip_kontakta.Create(nil,True);
+      ctbe.Eng_description:=
+        'proj_start';
+    end;
+
+   if BoldHandlesDM.behProjEnd.Value=nil then
+    begin
+      ctbe:=
+        TTip_kontakta.Create(nil,True);
+      ctbe.Eng_description:=
+        'proj_end';
+    end;
+
+end;
+
+function TFirstForm.BoldAsIntegerRenderer1GetAsInteger(Element: TBoldElement; Representation: Integer; Expression: string): Integer;
+begin
+  Result := 0;
+  if Assigned(Element) then
+    begin
+    end;
+end;
+
+procedure TFirstForm.N2Click(Sender: TObject);
+begin
+  MainRepSetFormUnit.MainRepSettForm.ShowModal;
+end;
+
+procedure TFirstForm.N8Click(Sender: TObject);
+begin
+  OneDaysOnRepSettForm.ShowModal;
+end;
+
+procedure TFirstForm.DBDataRefreshToolButtonClick(Sender: TObject);
+begin
+  BoldModelDM.RefreshDBData;
+end;
+
+procedure TFirstForm.ProgrammSettingsToolButtonClick(Sender: TObject);
+begin
+  ReleaseStructForm.SettingsTabSheet.Show;
+end;
+
+procedure TFirstForm.Action1Click(Sender: TObject);
+begin
+  BoldHandlesDM.CustomizeDlg1.Show;
+end;
+
+procedure TFirstForm.ActivateToolButtonClick(Sender: TObject);
+begin
+if BoldModelDM.bsh.Active then
+begin
+
+  end;
+BoldModelDM.BoldActivateSystemAction1.Execute;
+if BoldModelDM.bsh.Active then
+  begin
+   BoldModelDM.UserSystemEnter;
+   FirstForm.CheckUnionObjects;
+   BoldModelDM.ADOConnection.LoginPrompt:=False;
+   EnableUpdates:=True;
+   BoldHandlesDM.bvhCurrTime.Value.SetAsVariant(Today+Time);
+   if BoldHandlesDM.blhAttentionTodReminders.List.Count>0 then
+    begin
+
+      ReleaseStructForm.AttentRemTabSheet.Show;
+      ShowMessage('Имеется '+IntToStr(BoldHandlesDM.blhAttentionTodReminders.List.Count)+' акт. напоминаний, выделены красным цветом!');
+    end;
+  end
+else
+ begin
+  EnableUpdates:=False;
+  Close;
+ end;
+end;
+
+procedure TFirstForm.SettingsToolButtonClick(Sender: TObject);
+begin
+  ReleaseStructForm.SettingsTabSheet.Show;
+end;
+
+procedure TFirstForm.ToolButton9Click(Sender: TObject);
+begin
+  ShellExecute(Application.Handle, 'Open', PChar(CDP+'\MainConnection.udl'), nil, PChar(CDP), SW_SHOWNORMAL);
+end;
+
+procedure TFirstForm.AdminPanelToolButtonClick(Sender: TObject);
+begin
+  AdminPanelForm.ShowModal;
+end;
+
+procedure TFirstForm.BaseWorkPanelToolButtonClick(Sender: TObject);
+begin
+  ReleaseStructForm.MainChartTabSheet.Show;
+end;
+
+procedure TFirstForm.ToolButton16Click(Sender: TObject);
+begin
+  //ReleaseStructForm.RefreshMainPlanQuery;
+end;
+
+procedure TFirstForm.LogPanelToolButtonClick(Sender: TObject);
+begin
+  LogViewForm.Show;
+end;
+
+procedure TFirstForm.QuitToolButtonClick(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TFirstForm.XML1Click(Sender: TObject);
+begin
+  BoldModelDM.LoadXML;
+end;
+
+end.

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<nodeSet>
+  <view uin="qi1b8b8ar_v">
+    <property name="$name" value="MainForm" />
+    <property name="$defaultDiagram" value="True" />
+    <property name="$metaclass" value="Package Diagram" />
+    <reference referencedUin="delphi:e_class:src:MagazineRedaktor:MainForm.TFirstForm">
+      <property name="$shortcutReference" value="true" />
+    </reference>
+  </view>
+</nodeSet>

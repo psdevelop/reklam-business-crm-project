@@ -1,0 +1,307 @@
+CREATE FUNCTION GetClientByReleaseComment  ( @Cust_num int, @Release_num int, @Release_year int, @Bonus_count int)
+RETURNS varchar(255)
+AS
+BEGIN
+   Declare @changed int, @sum_r int, @before_count int, @comment varchar(255)
+
+      SELECT @sum_r=count(*), @changed=sum(Izmenyon)  FROM Vyhod v, Razmeshenie_reklamy rpl,
+      Vypusk_gazety rel WHERE
+      (v.vyhodit_v_vypuskah=rel.BOLD_ID) AND 
+     (v.imeet_razmesheniya=rpl.BOLD_ID) AND 
+     (rpl.BOLD_ID=@Cust_num) AND
+     (rel.Nomer_vypuska=@Release_num) AND
+     (rel.God_vypuska=@Release_year)
+
+   SELECT @before_count=count(*)  FROM Vyhod v, Razmeshenie_reklamy rpl,
+      Vypusk_gazety rel WHERE
+      (v.vyhodit_v_vypuskah=rel.BOLD_ID) AND 
+     (v.imeet_razmesheniya=rpl.BOLD_ID) AND 
+     (rpl.BOLD_ID=@Cust_num) AND
+     (((rel.Nomer_vypuska<@Release_num) AND
+     (rel.God_vypuska=@Release_year)) OR
+     (rel.God_vypuska<@Release_year))
+    
+
+   IF @sum_r> 0 BEGIN
+   
+    if @before_count=0 BEGIN
+     SET @Comment='НОВ'
+   end
+   else 
+   begin
+
+   if @changed>0 BEGIN
+    SET @Comment='изм'
+   end
+   else
+    begin
+     SET @Comment='б/и'
+    end
+
+    end
+
+   --END
+   --- ELSE
+   --BEGIN 
+    if dbo.GetClientByReleaseBonus  ( @Cust_num, @Release_num, @Release_year, @Bonus_count)=0 begin
+        SET @Comment=@Comment
+     end
+     else
+     begin
+        SET @Comment='бонус'
+     end
+   END   
+ELSE
+   BEGIN
+     SET @Comment=''
+    end 
+
+   RETURN(@Comment)
+END
+
+CREATE FUNCTION GetClientByReleaseSaled  ( @Cust_num int, @Release_num int, @Release_year int)
+RETURNS int
+AS
+BEGIN
+   DECLARE  @sale, @all_sale DECIMAL 
+   DECLARE  @client_id int
+
+
+      SELECT @client_id=cl.BOLD_ID
+      FROM Vyhod v, Razmeshenie_reklamy rpl,
+      Klient cl WHERE (v.imeet_razmesheniya=rpl.BOLD_ID) AND
+      (rpl.yavl_mestom_reklamy=cl.BOLD_ID)
+   
+      SELECT @all_sale= (sum(v.Stoimostj)-sum(sl.Summa)) 
+      FROM Vyhod v, Razmeshenie_reklamy rpl,
+      Vypusk_gazety rel, Klient cl, Oplata sl WHERE
+     (v.vyhodit_v_vypuskah=rel.BOLD_ID) AND 
+     (v.imeet_razmesheniya=rpl.BOLD_ID) AND 
+     (((rel.Nomer_vypuska<=@Release_num) AND
+     (rel.God_vypuska=@Release_year))
+          OR
+     (rel.God_vypuska<@Release_year) ) AND
+     (rpl.yavl_mestom_reklamy=cl.BOLD_ID) AND
+     (cl.BOLD_ID=@client_id) AND  
+     (cl.BOLD_ID=sl.osush_za_schyot) AND 
+     (sl.Data_oplaty<=GETDATE()) 
+
+  DECLARE @saled int
+
+   if @all_sale>0 END
+      SET @saled=0
+    ELSE
+   BEGIN
+     SET @saled=1
+   END
+
+   RETURN(@Saled)
+END
+
+CREATE FUNCTION GetClientByReleaseBonus  ( @Cust_num int, @Release_num int, @Release_year int, @Bonus_count int)
+RETURNS int
+AS
+BEGIN
+   
+   DECLARE @max_count int
+   DECLARE @bonus int
+   
+select @max_count=MAX(aa.r_count) from (
+   select rel.Nomer_vypuska, rel.God_vypuska, dbo.GetOutCountBetween(@Cust_num ,rel.Nomer_vypuska, rel.God_vypuska,
+     @Release_num, @Release_year) as r_count
+      FROM 
+      Vypusk_gazety rel,
+      Vyhod v, Razmeshenie_reklamy rpl where
+     (v.vyhodit_v_vypuskah=rel.BOLD_ID) AND 
+     (v.imeet_razmesheniya=rpl.BOLD_ID) AND
+     (rpl.BOLD_ID=@Cust_num) ) aa
+     where aa.r_count=
+     dbo.GetRelCountBetween(@Cust_num ,aa.Nomer_vypuska, aa.God_vypuska,
+      @Release_num, @Release_year)
+
+   if (@max_count>0) and (@Bonus_count>0) 
+    begin 
+    if (@max_count % @Bonus_count)=0 
+     begin
+       set @bonus=1
+     end
+    else
+    begin 
+       set @bonus=0
+    end 
+    end
+   else 
+    begin
+      set @bonus=0
+    end
+
+   RETURN(@bonus)
+END
+
+CREATE FUNCTION GetOutCountBetween  ( @rpl_id int, @Release_num_start int, @Release_year_start int, @Release_num_end int, @Release_year_end int)
+RETURNS int
+AS
+BEGIN
+   
+   DECLARE @rcount int
+
+   SELECT   
+     @rcount=COUNT(*)
+      FROM Vyhod v, Razmeshenie_reklamy rpl,
+      Vypusk_gazety rel WHERE
+     (v.vyhodit_v_vypuskah=rel.BOLD_ID) AND 
+     (v.imeet_razmesheniya=rpl.BOLD_ID) AND 
+     (((rel.Nomer_vypuska<=@Release_num_end) AND
+     (rel.God_vypuska=@Release_year_end))
+          OR
+     (rel.God_vypuska<@Release_year_end) ) AND 
+     (((rel.Nomer_vypuska>=@Release_num_start) AND
+     (rel.God_vypuska=@Release_year_start))
+          OR
+     (rel.God_vypuska>@Release_year_start) ) AND
+     (rpl.BOLD_ID=@rpl_id) 
+
+   RETURN(@rcount)
+END
+
+CREATE FUNCTION GetRelCountBetween  ( @rpl_id int, @Release_num_start int, @Release_year_start int, @Release_num_end int, @Release_year_end int)
+RETURNS int
+AS
+BEGIN
+   
+   DECLARE @rcount int
+
+   SELECT   
+     @rcount=COUNT(*)
+      FROM  Razmeshenie_reklamy rpl,
+      Vypusk_gazety rel, Razdel_izdaniya sect, Izdanie mag WHERE
+     (mag.BOLD_ID=sect.otnositsya_k_izd) AND 
+     (sect.BOLD_ID=rpl.razm_reklamu_v) AND 
+     (rpl.BOLD_ID=@rpl_id)  AND
+     (mag.BOLD_ID=rel.vyhod_izdaniya) AND
+     (((rel.Nomer_vypuska<=@Release_num_end) AND
+     (rel.God_vypuska=@Release_year_end))
+          OR
+     (rel.God_vypuska<@Release_year_end) ) AND 
+     (((rel.Nomer_vypuska>=@Release_num_start) AND
+     (rel.God_vypuska=@Release_year_start))
+          OR
+     (rel.God_vypuska>@Release_year_start) )
+     
+
+   RETURN(@rcount)
+END
+
+CREATE FUNCTION GetBonusVal ( @rpl_id int)
+RETURNS int
+AS
+BEGIN
+
+     DECLARE @rcount int, @trcount int, @bcount int, @tbcount int
+
+     select @rcount=COUNT(*),  @bcount=min(s.Bonus_vyhod) from  Razmeshenie_reklamy rpl, Sootn_so_skidk ss, 
+     Skidka s where
+     (ss.imeet_skidki=s.BOLD_ID) and (ss.formir_cenu_na=rpl.BOLD_ID) and (rpl.BOLD_ID=@rpl_id)
+     
+
+   select @trcount=COUNT(*),  @tbcount=min(s.Bonus_vyhod)   from  Razmeshenie_reklamy rpl, Sootn_tipa_so_skidk ss,  Tip_reklamy tr,
+     Skidka s where
+     (ss.tip_rekl_imeet_skidki=s.BOLD_ID) and (ss.harakt_skidk_tip_rekl=tr.BOLD_ID) and
+     (rpl.imeet_tip_reklamy=tr.BOLD_ID)   and (rpl.BOLD_ID=@rpl_id)
+
+  if (@bcount>0) or (@tbcount>0) 
+    begin 
+     if (@bcount<@tbcount) begin
+      SET @rcount=@bcount
+     end
+    else
+     begin
+      SET @rcount=@tbcount
+     end
+    end
+   else 
+    begin
+      SET @rcount=2000000
+    end    
+
+   RETURN(@rcount)
+END
+
+CREATE FUNCTION GetRPLManager  ( @Cust_num int)
+RETURNS varchar(255)
+AS
+BEGIN
+   Declare @sum_r int, @manager varchar(255)
+
+      SELECT @sum_r=count(*) FROM Razmeshenie_reklamy rpl,
+     Personal p WHERE
+     (rpl.BOLD_ID=@Cust_num)  AND rpl.vedyotsya_sotrudnikom=p.BOLD_ID
+
+    
+
+   IF @sum_r> 0 BEGIN
+    SELECT @manager=sokr_imya FROM Razmeshenie_reklamy rpl,
+     Personal p WHERE
+     (rpl.BOLD_ID=@Cust_num)   AND rpl.vedyotsya_sotrudnikom=p.BOLD_ID
+   END
+    ELSE
+   BEGIN 
+        SET @manager='?'
+   END   
+
+   RETURN(@manager)
+END
+
+CREATE FUNCTION GetRPLPageNum  ( @Cust_num int)
+RETURNS int
+AS
+BEGIN
+   Declare @sum_r int, @pagenum int
+
+      SELECT @sum_r=count(*) FROM Razmeshenie_reklamy rpl,
+    Razdel_izdaniya sect WHERE
+     (rpl.BOLD_ID=@Cust_num)  AND rpl.razm_reklamu_v=sect.BOLD_ID
+
+    
+
+   IF @sum_r> 0 BEGIN
+   SELECT @pagenum=sect.Nomer_karty_izdaniya FROM Razmeshenie_reklamy rpl,
+     Razdel_izdaniya sect WHERE
+     (rpl.BOLD_ID=@Cust_num)    AND rpl.razm_reklamu_v=sect.BOLD_ID
+   END
+    ELSE
+   BEGIN 
+        SET @pagenum=0
+   END   
+
+   RETURN(@pagenum)
+END
+
+CREATE FUNCTION GetRPLSize  ( @Cust_num int)
+RETURNS varchar(255)
+AS
+BEGIN
+   Declare @sum_r int, @size varchar(255), @h decimal, @w decimal
+
+      SELECT @sum_r=count(*)  FROM Razmeshenie_reklamy rpl,
+     Personal p WHERE
+     (rpl.BOLD_ID=@Cust_num)  --AND rpl.vedyotsya_sotrudnikom=p.BOLD_ID
+
+    
+
+  IF @sum_r> 0 BEGIN
+    --SELECT @size=()+() FROM Razmeshenie_reklamy rpl,
+    -- Personal p WHERE
+    -- (rpl.BOLD_ID=@Cust_num)   AND rpl.vedyotsya_sotrudnikom=p.BOLD_ID
+SELECT 
+      @size=CAST(shirina as VARCHAR)+'x'+CAST(vysota AS VARCHAR) FROM Razmeshenie_reklamy rpl,
+     Personal p WHERE
+     (rpl.BOLD_ID=@Cust_num)   
+END
+  --  ELSE
+--   BEGIN 
+        --SET @manager='?'
+ --  END   
+
+   RETURN(@size)
+END

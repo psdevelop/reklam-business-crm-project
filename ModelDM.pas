@@ -1,0 +1,344 @@
+unit ModelDM;
+
+interface
+
+uses
+  SysUtils, Classes, BoldHandles, BoldSystemHandle, BoldAbstractModel,
+  BoldModel, BoldSubscription, BoldHandle, BoldPersistenceHandle,
+  BoldPersistenceHandleFile, BoldPersistenceHandleFileXML, BoldActions,
+  ActnList, BoldHandleAction, RBoldTranslit, BoldAbstractPersistenceHandleDB,
+  BoldPersistenceHandleDB, DB, ADODB, BoldAbstractDatabaseAdapter,
+  BoldDatabaseAdapterADO, IniFiles, BoldUnloaderHandle,
+  BoldPersistenceHandleSystem, BoldAbstractObjectUpgraderHandle,
+  BoldObjectUpgraderHandle, xmldom, XMLIntf, msxmldom, XMLDoc,
+  BoldRootedHandles, BoldAbstractListHandle, BoldCursorHandle, BoldListHandle,
+  BoldOclVariables, BoldVariableHandle, BoldUndoActions, BusinessClasses;
+
+type
+  TBoldModelDM = class(TDataModule)
+    bphXML: TBoldPersistenceHandleFileXML;
+    bsh: TBoldSystemHandle;
+    bstih: TBoldSystemTypeInfoHandle;
+    BaseDBActionList: TActionList;
+    BoldUpdateDBAction1: TBoldUpdateDBAction;
+    BoldActivateSystemAction1: TBoldActivateSystemAction;
+    RBoldTranslit: TRBoldTranslit;
+    bph: TBoldPersistenceHandleDB;
+    bdaADO: TBoldDatabaseAdapterADO;
+    ADOConnection: TADOConnection;
+    USRLoginADOQuery: TADOQuery;
+    BoldObjectUpgraderHandle: TBoldObjectUpgraderHandle;
+    MainPlanADOQuery: TADOQuery;
+    dsMainPlan: TDataSource;
+    b_model: TBoldModel;
+    XMLDocument1: TXMLDocument;
+    bvhCatName: TBoldVariableHandle;
+    bovCatByName: TBoldOclVariables;
+    BoldListHandle1: TBoldListHandle;
+    BoldUndoAction1: TBoldUndoAction;
+    blhClByParam: TBoldListHandle;
+    bovClByParam: TBoldOclVariables;
+    ClByIDADOQuery: TADOQuery;
+    bvhClName: TBoldVariableHandle;
+    procedure BoldActivateSystemAction1SystemClosed(Sender: TObject);
+    procedure BoldActivateSystemAction1SystemOpened(Sender: TObject);
+    procedure DataModuleCreate(Sender: TObject);
+    procedure SetEnabledValue(Value: Boolean);
+    procedure UserSystemEnter;
+    procedure UserSystemExit;
+    function GetCurrUserLogin: string;
+    procedure SetCurrWorkerAndYourPrivilegies(login: string);
+    procedure RefreshDBData;
+    procedure LoadXML;
+    function GetClientByID(id: Integer): TKlient;
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+    RefreshState: Boolean;
+    CurrLogin: string;
+  end;
+
+var
+  BoldModelDM: TBoldModelDM;
+  IniFile: TIniFile;
+
+implementation
+
+{$R *.dfm}
+
+uses MainForm, Dialogs, BoldOtherHandlCompUnit, HandlesDM,
+  ReleaseStructUnit, AdministrationPanelUnit;
+
+procedure TBoldModelDM.LoadXML;
+var Root, Row, Cell: IXMLNode;
+    i: Integer;
+    CatName: string;
+    CL: TKlient;
+    CS: TSpecif_organizacii;
+begin
+  Root:=
+    XMLDocument1.DocumentElement;
+  for i:=0 to Root.ChildNodes.Count-1 do
+    begin
+      Row:=
+        Root.ChildNodes.Get(i);
+      if Row.ChildNodes.Count=9 then
+        begin
+          CL:=
+            TKlient.Create(nil,True);
+
+          Cell:=Row.ChildNodes.Get(7);
+          if Cell.ChildNodes.FindNode('Data')<>nil then
+            begin
+              bvhCatName.Value.SetAsVariant(Cell.ChildNodes.FindNode('Data').Text);
+              if BoldListHandle1.List.Count>0 then
+                 begin
+                   CL.org_imeet_specif:=
+                     (BoldListHandle1.CurrentElement as
+                       TSpecif_organizacii);
+                 end
+               else
+                 begin
+                   CS:=TSpecif_organizacii.Create(nil, True);
+                   CS.Naimenovanie:=
+                     Cell.ChildNodes.FindNode('Data').Text;
+                   CL.org_imeet_specif:=
+                     CS;
+                 end;
+            end;
+
+            CL.Yavl_yur_licom:=
+              True;
+
+            Cell:=Row.ChildNodes.Get(0);
+            if Cell.ChildNodes.FindNode('Data')<>nil then
+            begin
+              CL.Naimenovanie:=
+                Cell.ChildNodes.FindNode('Data').Text;
+            end;
+
+            Cell:=Row.ChildNodes.Get(1);
+            if Cell.ChildNodes.FindNode('Data')<>nil then
+            begin
+              CL.Gorod:=
+                Cell.ChildNodes.FindNode('Data').Text;
+            end;
+
+            Cell:=Row.ChildNodes.Get(2);
+            if Cell.ChildNodes.FindNode('Data')<>nil then
+            begin
+              CL.Ulica:=
+                Cell.ChildNodes.FindNode('Data').Text;
+            end;
+
+            Cell:=Row.ChildNodes.Get(3);
+            if Cell.ChildNodes.FindNode('Data')<>nil then
+            begin
+              CL.Ulica:=CL.Ulica+' '+
+                Cell.ChildNodes.FindNode('Data').Text;
+            end;
+
+            Cell:=Row.ChildNodes.Get(4);
+            if Cell.ChildNodes.FindNode('Data')<>nil then
+            begin
+              CL.Ulica:=CL.Ulica+' '+
+                Cell.ChildNodes.FindNode('Data').Text;
+            end;
+
+            Cell:=Row.ChildNodes.Get(5);
+            if Cell.ChildNodes.FindNode('Data')<>nil then
+            begin
+              CL.Rabochii_telefon:=
+                Cell.ChildNodes.FindNode('Data').Text;
+            end;
+
+        end;
+    end;
+end;
+
+function TBoldModelDM.GetClientByID(id: Integer): TKlient;
+var res: TKlient;
+    imenov: string;
+begin
+  ClByIDADOQuery.Active:=False;
+  ClByIDADOQuery.Parameters[0].Value:=
+    id;
+  try
+    ClByIDADOQuery.Active:=True;
+    if ClByIDADOQuery.RecordCount=0 then
+       res:=nil
+    else if ClByIDADOQuery.RecordCount>1 then
+      ShowMessage('Ошибка, более одного клиента с одинаковым идентификатором!')
+    else
+      begin
+        if ClByIDADOQuery.FindField('Yavl_yur_licom').AsInteger=1 then
+          begin
+            imenov:=
+              ClByIDADOQuery.FindField('Naimenovanie').AsString;
+          end
+        else
+          begin
+            imenov:=
+              ClByIDADOQuery.FindField('Familiya').AsString+' '+
+              ClByIDADOQuery.FindField('Imya').AsString+' '+
+              ClByIDADOQuery.FindField('Otchestvo').AsString;
+          end;
+        //ShowMessage(imenov);
+        if imenov<>'' then
+          begin
+            res:=nil;
+            bvhClName.Value.SetAsVariant(imenov);
+            if blhClByParam.List.Count>1 then
+              ShowMessage('Найдено более одного клиента с именем '+imenov)
+            else
+              res:=
+                (blhClByParam.CurrentElement as TKlient);
+          end
+        else
+          res:=nil;
+      end;
+  except
+    ShowMessage('Неудачная посылка запроса объекта клиента по идентификатору!');
+  end;
+  Result:=res;
+end;
+
+procedure TBoldModelDM.RefreshDBData;
+begin
+ RefreshState:=True;
+ BoldModelDM.BoldUpdateDBAction1.Execute;
+ BoldModelDM.bsh.Active:=False;
+ BoldModelDM.bsh.Active:=True;
+ BoldHandlesDM.bvhCurrUserLogin.Value.SetAsVariant(CurrLogin);
+ RefreshState:=False;
+end;
+
+procedure TBoldModelDM.DataModuleCreate(Sender: TObject);
+begin
+  bphXML.FileName:=GetCurrentDir+'\DEMO_DB_DATA.xml';
+  XMLDocument1.FileName:=
+    GetCurrentDir+'\Contacts.xml';
+  try
+    XMLDocument1.Active:=
+      True;
+  except
+    ShowMessage('Неудачная активация XML-файла с контактами!');
+  end;
+  ADOConnection.Connected:=False;
+  ADOConnection.LoginPrompt:=True;
+  ADOConnection.ConnectionString:='FILE NAME='+CDP+'\MainConnection.udl';
+  IniFile:= TIniFile.Create(GetCurrentDir+'\PSPStandart.ini');
+  if IniFile.ReadString('BUSINESS_DATA','enable_for_allXML_DEMO','NO')='YES' then
+    bsh.PersistenceHandle:=bphXML
+  else
+    bsh.PersistenceHandle:=bph;
+end;
+
+procedure TBoldModelDM.SetCurrWorkerAndYourPrivilegies(login: string);
+begin
+  CurrLogin:=login;
+  //while not bsh.Active do;
+  BoldHandlesDM.bvhCurrUserLogin.Value.SetAsVariant(login);
+        if (BoldHandlesDM.blhCurrUser.Count=0) or ((BoldHandlesDM.blhCurrUser.Count>1)) then
+          begin
+            ShowMessage('Пользователь с таким логином отсутствует в таблице пользователей, либо пользователей с таким логином несколько!');
+            if not(IniFile.ReadString('BUSINESS_DATA','enable_for_allXML_DEMO','NO')='YES') and
+               (BoldHandlesDM.blhUsersList.List.Count>0) then
+              bsh.Active:=False;
+            if BoldHandlesDM.blhUsersList.List.Count=0 then
+              begin
+                ShowMessage('В базе не заведено ни одного пользователя, программа предложит вам сделать это!');
+                AdminPanelForm.ShowModal;
+              end;
+            Exit;
+          end
+         else
+           begin
+             ShowMessage('Добро пожаловать в систему. Ваш логин зарегистрирован для пользователя '+
+             (BoldHandlesDM.blhCurrUser.CurrentElement as TPersonal).Polnoe_imya);
+             SetEnabledValue(True);
+           end;
+end;
+
+procedure TBoldModelDM.BoldActivateSystemAction1SystemOpened(Sender: TObject);
+begin
+if not RefreshState then
+ begin
+  FirstForm.ActivateToolButton.ImageIndex:=3;
+  FirstForm.BoldActivateSystemActionMenu.ImageIndex:=3;
+  FirstForm.StatusBar.Panels[0].Text:='Соединение активно';
+  FirstForm.ActivateToolButton.Hint:='Погасить соединение перед завершением работы';
+  FirstForm.QuitToolButton.Enabled:=False;
+  FirstForm.QuitMenu.Enabled:=False;
+ end;
+end;
+
+procedure TBoldModelDM.BoldActivateSystemAction1SystemClosed(Sender: TObject);
+begin
+if not RefreshState then
+ begin
+  FirstForm.ActivateToolButton.ImageIndex:=0;
+  FirstForm.BoldActivateSystemActionMenu.ImageIndex:=0;
+  FirstForm.StatusBar.Panels[0].Text:='Нет соединения';
+  FirstForm.ActivateToolButton.Hint:='Установить соединение с БД для работы с данными';
+  FirstForm.QuitToolButton.Enabled:=True;
+  FirstForm.QuitMenu.Enabled:=True;
+  UserSystemExit;
+ end;
+end;
+
+procedure TBoldModelDM.UserSystemEnter;
+var login: string;
+begin
+ReleaseStructForm.Enabled:=True;
+if IniFile.ReadString('BUSINESS_DATA','enable_for_allXML_DEMO','NO')='YES' then
+ begin
+  SetCurrWorkerAndYourPrivilegies('xml_user');
+ end
+else
+  begin
+    login:=GetCurrUserLogin;
+    if login='' then
+     begin
+       bsh.Active:=False;
+       Exit;
+     end
+    else
+      begin
+       SetCurrWorkerAndYourPrivilegies(login);
+      end;
+  end;
+end;
+
+procedure TBoldModelDM.UserSystemExit;
+begin
+  SetEnabledValue(False);
+  if ReleaseStructForm<>nil then
+    ReleaseStructForm.Enabled:=False;
+end;
+
+procedure TBoldModelDM.SetEnabledValue(Value: Boolean);
+begin
+  FirstForm.BaseWorkPanelToolButton.Enabled:=Value;
+  FirstForm.EnumsMenu.Enabled:=Value;
+  FirstForm.BaseCorrectRepMenu.Enabled:=Value;
+end;
+
+function TBoldModelDM.GetCurrUserLogin: string;
+var login: string;
+begin
+  login:='';
+  try
+    USRLoginADOQuery.Active:=False;
+    USRLoginADOQuery.SQL.Text:='select system_user as curr_usr_name';
+    USRLoginADOQuery.Active:=True;
+    login:=USRLoginADOQuery.FindField('curr_usr_name').AsString;
+    USRLoginADOQuery.Active:=False;
+  except
+    ShowMessage('Неудачное прохождение запроса к базе для получения логина пользователя!');
+  end;
+  Result:=login;
+end;
+
+end.
